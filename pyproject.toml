@@ -1,0 +1,6 @@
+[project]
+name = "agent-session-exporter"
+version = "0.1.0"
+description = "Export agent session history to HTML or JSON summaries."
+requires-python = ">=3.11"
+dependencies = ["markdown>=3.10.2"]
