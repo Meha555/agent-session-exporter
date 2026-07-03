@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import export_opencode_sessions as exporter
+import agent_session_exporter as exporter
 
 
 def create_test_db(path: Path) -> None:
@@ -513,12 +513,22 @@ class ExportOpenCodeSessionsTest(unittest.TestCase):
 
         outline = html.split('id="session-outline"', 1)[1].split("</nav>", 1)[0]
         self.assertIn('href="#turn-1"', outline)
+        self.assertIn('data-target="turn-1"', outline)
         self.assertIn('href="#ai-1"', outline)
+        self.assertIn('data-target="ai-1"', outline)
         self.assertIn('href="#turn-2"', outline)
         self.assertIn('href="#ai-2"', outline)
         self.assertNotIn("Tool:", outline)
         self.assertNotIn("Diff:", outline)
         self.assertNotIn("Session diffs", outline)
+        self.assertIn("IntersectionObserver", html)
+        self.assertIn(".outline a.is-current", html)
+        self.assertNotIn(".message.is-current", html)
+        self.assertIn("is-flashing", html)
+        self.assertIn("flashOutline", html)
+        self.assertIn('class="anchor-copy"', html)
+        self.assertIn('data-anchor="turn-1"', html)
+        self.assertIn("copyText", html)
 
     def test_html_can_include_synthetic_events_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -812,13 +822,17 @@ class ExportOpenCodeSessionsTest(unittest.TestCase):
         self.assertEqual(first.count('class="page-nav"'), 1)
         self.assertIn('class="page-jump"', first)
         self.assertEqual(first.count('class="page-jump"'), 1)
+        self.assertIn('<span class="page-nav__disabled">First</span>', first)
+        self.assertIn('href="ses_test-test-session-p003.html">Last</a>', first)
         self.assertIn('name="page"', first)
         self.assertIn('href="ses_test-test-session-p002.html"', first)
         self.assertIn('id="scroll-to-bottom"', first)
         self.assertIn('href="#page-bottom"', first)
         self.assertIn('id="page-bottom"', first)
         self.assertIn("Page 2 / 3", second)
+        self.assertIn('href="ses_test-test-session-p001.html">First</a>', second)
         self.assertIn('href="ses_test-test-session-p001.html"', second)
+        self.assertIn('href="ses_test-test-session-p003.html">Last</a>', second)
         self.assertIn('href="index.html"', second)
 
 

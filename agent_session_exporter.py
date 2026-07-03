@@ -720,7 +720,8 @@ def render_session_html(
         page_nav=page_nav,
         page_nav_bottom="" if page_nav_bottom is None else page_nav_bottom,
         outline="\n".join(
-            f'<a href="#{escape(anchor)}">{escape(label)}</a>' for anchor, label in outline
+            f'<a href="#{escape(anchor)}" data-target="{escape(anchor)}">{escape(label)}</a>'
+            for anchor, label in outline
         ),
         body="\n".join(body),
     )
@@ -745,7 +746,7 @@ def render_user_message(message: dict[str, Any], anchor: str, turn: int) -> str:
 <section class="message user" id="{escape(anchor)}">
   <div class="avatar">H</div>
   <div class="bubble">
-    <div class="message-head"><strong>Human</strong><span>{escape(meta)}</span></div>
+    <div class="message-head"><span class="message-title"><strong>Human</strong><button class="anchor-copy" type="button" data-anchor="{escape(anchor)}" aria-label="Copy link to Human {turn}" title="Copy link">¶</button></span><span>{escape(meta)}</span></div>
     <div class="content">{text}</div>
   </div>
 </section>
@@ -781,7 +782,7 @@ def render_assistant_message(
 <section class="message assistant" id="{escape(anchor)}">
   <div class="avatar">AI</div>
   <div class="bubble">
-    <div class="message-head"><strong>AI</strong><span>{escape(meta)}</span></div>
+    <div class="message-head"><span class="message-title"><strong>AI</strong><button class="anchor-copy" type="button" data-anchor="{escape(anchor)}" aria-label="Copy link to AI response" title="Copy link">¶</button></span><span>{escape(meta)}</span></div>
     {"".join(blocks)}
   </div>
 </section>
@@ -1019,26 +1020,33 @@ def render_page_nav(
     if total_pages <= 1 and not diff_filename:
         return ""
     label = "File changes" if is_diff_page else f"Page {current_page} / {total_pages}"
+    first_href = None
     prev_href = None
     next_href = None
+    last_href = None
     if is_diff_page:
         prev_href = page_filenames[-1] if page_filenames else None
     else:
+        if current_page > 1 and page_filenames:
+            first_href = page_filenames[0]
         if current_page > 1:
             prev_href = page_filenames[current_page - 2]
         if current_page < total_pages:
             next_href = page_filenames[current_page]
+            last_href = page_filenames[-1]
         elif diff_filename:
             next_href = diff_filename
     pieces = [
         '<nav class="page-nav" aria-label="Page navigation">',
         '<a href="index.html">Index</a>',
+        nav_link("First", first_href) if not is_diff_page else "",
         nav_link("Previous", prev_href),
         f'<span class="page-nav__label">{escape(label)}</span>',
         render_page_jump(current_page, total_pages, page_filenames[0])
         if show_jump and not is_diff_page
         else "",
         nav_link("Next", next_href),
+        nav_link("Last", last_href) if not is_diff_page else "",
     ]
     if diff_filename and not is_diff_page:
         pieces.append(f'<a href="{escape(diff_filename)}">File changes</a>')
@@ -1297,6 +1305,7 @@ HTML_TEMPLATE = """<!doctype html>
       --line-strong: #d3cec2;
       --accent: #2f6f6d;
       --accent-soft: #e5f0ef;
+      --accent-flash: #f3c65d;
       --human: #315f7d;
       --assistant: #5b665a;
       --avatar-human-bg: #3f7fb3;
@@ -1328,6 +1337,7 @@ HTML_TEMPLATE = """<!doctype html>
       --line-strong: #4a515c;
       --accent: #8fb8b4;
       --accent-soft: #263a3a;
+      --accent-flash: #f0c86a;
       --human: #8fb7d9;
       --assistant: #a9b89f;
       --avatar-human-bg: #2e5f86;
@@ -1469,6 +1479,7 @@ HTML_TEMPLATE = """<!doctype html>
       gap: 16px;
       margin: 26px 0;
       position: relative;
+      scroll-margin-top: 24px;
     }}
     .message::before {{
       content: "";
@@ -1556,6 +1567,33 @@ HTML_TEMPLATE = """<!doctype html>
       font-size: 13px;
       letter-spacing: .08em;
       text-transform: uppercase;
+    }}
+    .message-title {{
+      display: inline-flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+    }}
+    .anchor-copy {{
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      font: 700 16px/1 ui-serif, Georgia, serif;
+      opacity: 0;
+      padding: 0 3px;
+      transform: translateY(1px);
+      transition: opacity .14s ease, color .14s ease;
+    }}
+    .message-title:hover .anchor-copy,
+    .anchor-copy:focus-visible,
+    .anchor-copy.copied {{
+      opacity: 1;
+    }}
+    .anchor-copy:hover,
+    .anchor-copy:focus-visible {{
+      color: var(--heading);
+      outline: none;
     }}
     .content {{ max-width: 92ch; }}
     p {{ margin: 0 0 12px; overflow-wrap: anywhere; }}
@@ -1679,8 +1717,19 @@ HTML_TEMPLATE = """<!doctype html>
       overflow-wrap: anywhere;
       font-size: 13px;
       line-height: 1.35;
+      border-left: 3px solid transparent;
+      transition: background-color .16s ease, color .16s ease, border-color .16s ease;
     }}
     .outline a:hover {{ background: var(--accent-soft); color: var(--heading); }}
+    .outline a.is-current {{
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+      color: var(--heading);
+      font-weight: 700;
+    }}
+    .outline a.is-flashing {{
+      animation: outline-flash 1.15s ease-out;
+    }}
     .outline-toggle {{
       position: fixed;
       right: 24px;
@@ -1724,6 +1773,15 @@ HTML_TEMPLATE = """<!doctype html>
     .back-to-top {{ grid-row: 1; }}
     .scroll-to-bottom {{ grid-row: 2; }}
     .muted {{ color: var(--muted); }}
+    @keyframes outline-flash {{
+      0% {{ background: color-mix(in srgb, var(--accent-flash) 38%, var(--paper-raised)); color: var(--heading); }}
+      100% {{ background: var(--accent-soft); }}
+    }}
+    @media (prefers-reduced-motion: reduce) {{
+      html {{ scroll-behavior: auto; }}
+      .outline a, .anchor-copy {{ transition: none; }}
+      .outline a.is-flashing {{ animation: none; }}
+    }}
     @media (max-width: 980px) {{
       .layout {{ grid-template-columns: 1fr; width: min(100vw - 24px, 920px); padding-top: 12px; }}
       .timeline {{ padding: 22px; }}
@@ -1823,6 +1881,161 @@ HTML_TEMPLATE = """<!doctype html>
         mobileQuery.addListener(resetForViewport);
       }}
       resetForViewport();
+    }})();
+    (function () {{
+      var outline = document.getElementById("session-outline");
+      if (!outline) {{
+        return;
+      }}
+      var links = Array.prototype.slice.call(outline.querySelectorAll("a[data-target]"));
+      if (!links.length) {{
+        return;
+      }}
+      var linkById = new Map();
+      links.forEach(function (link) {{
+        linkById.set(link.getAttribute("data-target"), link);
+      }});
+      var sections = links
+        .map(function (link) {{
+          return document.getElementById(link.getAttribute("data-target"));
+        }})
+        .filter(Boolean);
+      var currentId = "";
+      function setCurrent(id, scrollOutline) {{
+        if (!id || id === currentId) {{
+          return;
+        }}
+        var previousLink = linkById.get(currentId);
+        if (previousLink) {{
+          previousLink.classList.remove("is-current");
+        }}
+        currentId = id;
+        var link = linkById.get(id);
+        if (link) {{
+          link.classList.add("is-current");
+          if (scrollOutline) {{
+            link.scrollIntoView({{ block: "nearest" }});
+          }}
+        }}
+      }}
+      function flashOutline(id) {{
+        var link = linkById.get(id);
+        if (!link) {{
+          return;
+        }}
+        link.classList.remove("is-flashing");
+        void link.offsetWidth;
+        link.classList.add("is-flashing");
+        window.setTimeout(function () {{
+          link.classList.remove("is-flashing");
+        }}, 1200);
+      }}
+      links.forEach(function (link) {{
+        link.addEventListener("click", function () {{
+          var id = link.getAttribute("data-target");
+          setCurrent(id, true);
+          window.setTimeout(function () {{
+            flashOutline(id);
+          }}, 180);
+        }});
+      }});
+      if ("IntersectionObserver" in window) {{
+        var visible = new Map();
+        var observer = new IntersectionObserver(
+          function (entries) {{
+            entries.forEach(function (entry) {{
+              if (entry.isIntersecting) {{
+                visible.set(entry.target.id, entry.intersectionRatio);
+              }} else {{
+                visible.delete(entry.target.id);
+              }}
+            }});
+            var best = null;
+            var bestTop = Infinity;
+            sections.forEach(function (section) {{
+              if (!visible.has(section.id)) {{
+                return;
+              }}
+              var top = Math.abs(section.getBoundingClientRect().top - window.innerHeight * 0.18);
+              if (top < bestTop) {{
+                bestTop = top;
+                best = section;
+              }}
+            }});
+            if (best) {{
+              setCurrent(best.id, true);
+            }}
+          }},
+          {{ root: null, rootMargin: "-12% 0px -58% 0px", threshold: [0, 0.1, 0.35, 0.7] }}
+        );
+        sections.forEach(function (section) {{
+          observer.observe(section);
+        }});
+      }} else {{
+        var ticking = false;
+        window.addEventListener("scroll", function () {{
+          if (ticking) {{
+            return;
+          }}
+          ticking = true;
+          window.requestAnimationFrame(function () {{
+            ticking = false;
+            var best = sections[0];
+            var bestTop = Infinity;
+            sections.forEach(function (section) {{
+              var top = Math.abs(section.getBoundingClientRect().top - window.innerHeight * 0.18);
+              if (top < bestTop) {{
+                bestTop = top;
+                best = section;
+              }}
+            }});
+            if (best) {{
+              setCurrent(best.id, true);
+            }}
+          }});
+        }}, {{ passive: true }});
+      }}
+      setCurrent(sections[0].id, false);
+    }})();
+    (function () {{
+      var buttons = Array.prototype.slice.call(document.querySelectorAll(".anchor-copy"));
+      function copyText(text) {{
+        if (navigator.clipboard && window.isSecureContext) {{
+          return navigator.clipboard.writeText(text);
+        }}
+        var input = document.createElement("textarea");
+        input.value = text;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        try {{
+          document.execCommand("copy");
+        }} finally {{
+          document.body.removeChild(input);
+        }}
+        return Promise.resolve();
+      }}
+      buttons.forEach(function (button) {{
+        button.addEventListener("click", function (event) {{
+          event.preventDefault();
+          event.stopPropagation();
+          var anchor = button.getAttribute("data-anchor");
+          if (!anchor) {{
+            return;
+          }}
+          var url = window.location.href.split("#")[0] + "#" + anchor;
+          copyText(url).then(function () {{
+            button.classList.add("copied");
+            button.title = "Copied";
+            window.setTimeout(function () {{
+              button.classList.remove("copied");
+              button.title = "Copy link";
+            }}, 1200);
+          }});
+        }});
+      }});
     }})();
     (function () {{
       var forms = Array.prototype.slice.call(document.querySelectorAll(".page-jump"));
