@@ -1364,8 +1364,9 @@ HTML_TEMPLATE = """<!doctype html>
         radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 34rem),
         var(--bg);
       color: var(--text);
-      font: 16px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
-        "Noto Sans SC", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+      font-family: sans-serif;
+      font-size: 16px;
+      line-height: 1.62;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }}
@@ -1416,7 +1417,9 @@ HTML_TEMPLATE = """<!doctype html>
       color: var(--text);
       border-radius: 999px;
       padding: 7px 12px;
-      font: 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.2;
       cursor: pointer;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     }}
@@ -1579,7 +1582,10 @@ HTML_TEMPLATE = """<!doctype html>
       background: transparent;
       color: var(--accent);
       cursor: pointer;
-      font: 700 16px/1 ui-serif, Georgia, serif;
+      font: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
       opacity: 0;
       padding: 0 3px;
       transform: translateY(1px);
@@ -1625,7 +1631,9 @@ HTML_TEMPLATE = """<!doctype html>
       border: 1px solid var(--line);
       border-radius: 5px;
       padding: .08em .34em;
-      font: 85%/1.45 "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-family: monospace;
+      font-size: 85%;
+      line-height: 1.45;
     }}
     pre code {{
       background: transparent;
@@ -1671,7 +1679,9 @@ HTML_TEMPLATE = """<!doctype html>
       border-radius: 6px;
       padding: 8px 10px;
       color: var(--code-block-text);
-      font: 12px/1.45 "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.45;
     }}
     .diff-code span {{ display: block; min-height: 1.35em; padding: 0 5px; }}
     .diff-code .add {{ background: var(--add); color: var(--add-text); }}
@@ -1740,7 +1750,9 @@ HTML_TEMPLATE = """<!doctype html>
       color: var(--accent);
       border-radius: 999px;
       padding: 8px 12px;
-      font: 12px/1.2 ui-sans-serif, system-ui, sans-serif;
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.2;
       cursor: pointer;
       box-shadow: var(--shadow);
     }}
@@ -2068,7 +2080,7 @@ INDEX_TEMPLATE = """<!doctype html>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>opencode session exports</title>
   <style>
-    body {{ margin: 32px; background: #111; color: #eee; font: 14px/1.5 ui-sans-serif, system-ui; }}
+    body {{ margin: 32px; background: #111; color: #eee; font-family: sans-serif; font-size: 14px; line-height: 1.5; }}
     a {{ color: #8ec5ff; }}
     ul {{ padding-left: 1.25rem; }}
     li {{ margin: 0.35rem 0; }}

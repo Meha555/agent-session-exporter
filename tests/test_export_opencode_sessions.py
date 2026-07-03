@@ -530,6 +530,32 @@ class ExportOpenCodeSessionsTest(unittest.TestCase):
         self.assertIn('data-anchor="turn-1"', html)
         self.assertIn("copyText", html)
 
+    def test_html_uses_browser_generic_font_families(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "opencode.db"
+            create_test_db(db_path)
+
+            sessions = exporter.load_sessions(db_path, "ses_test")
+            html = exporter.render_session_html(sessions[0], root)
+
+        self.assertIn("font-family: sans-serif;", html)
+        self.assertIn("font-family: monospace;", html)
+        self.assertIn("font-family: sans-serif;", exporter.INDEX_TEMPLATE)
+        for font_name in (
+            "Segoe UI",
+            "Microsoft YaHei",
+            "Noto Sans SC",
+            "PingFang SC",
+            "JetBrains Mono",
+            "Cascadia Code",
+            "SFMono-Regular",
+            "ui-sans-serif",
+            "system-ui",
+        ):
+            self.assertNotIn(font_name, html)
+            self.assertNotIn(font_name, exporter.INDEX_TEMPLATE)
+
     def test_html_can_include_synthetic_events_when_requested(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
