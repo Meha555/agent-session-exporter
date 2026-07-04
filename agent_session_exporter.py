@@ -941,12 +941,52 @@ def format_time(value: Any) -> str:
 
 
 def render_markdownish(text: str) -> str:
+    text = normalize_markdown_list_indentation(text or "")
     rendered = markdown_lib.markdown(
-        text or "",
+        text,
         extensions=["fenced_code", "tables", "sane_lists", "nl2br"],
         output_format="html5",
     )
     return render_mermaid_blocks(rendered)
+
+
+def normalize_markdown_list_indentation(text: str) -> str:
+    lines = text.splitlines(keepends=True)
+    list_marker = re.compile(r"^(?P<indent> {2,})(?P<marker>(?:[-+*]|\d+[.)])\s+)")
+    in_fence = False
+    needs_normalize = False
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        match = list_marker.match(line)
+        if match and len(match.group("indent")) % 4 != 0:
+            needs_normalize = True
+            break
+    if not needs_normalize:
+        return text
+
+    normalized = []
+    in_fence = False
+    for line in lines:
+        stripped = line.lstrip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            normalized.append(line)
+            continue
+        if in_fence:
+            normalized.append(line)
+            continue
+        match = list_marker.match(line)
+        if not match:
+            normalized.append(line)
+            continue
+        indent = match.group("indent")
+        normalized.append(" " * (len(indent) * 2) + line[len(indent) :])
+    return "".join(normalized)
 
 
 def render_mermaid_blocks(rendered: str) -> str:

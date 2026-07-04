@@ -620,6 +620,31 @@ class ExportOpenCodeSessionsTest(unittest.TestCase):
         self.assertIn("<strong>HTML</strong>", rendered)
         self.assertIn("<pre><code class=\"language-python\">", rendered)
 
+    def test_html_renders_two_space_nested_markdown_lists(self) -> None:
+        rendered = exporter.render_markdownish(
+            "- `dcc-daemon`\n"
+            "  - `/inspect/daemon`\n"
+            "  - 本机编译器列表、local task mgr\n"
+            "- `dcc-scheduler`\n"
+            "  - `/inspect/scheduler`\n"
+        )
+
+        self.assertIn("<li><code>dcc-daemon</code><ul>", rendered)
+        self.assertIn("<li><code>/inspect/daemon</code></li>", rendered)
+        self.assertIn("<li>本机编译器列表、local task mgr</li>", rendered)
+        self.assertIn("<li><code>dcc-scheduler</code><ul>", rendered)
+        self.assertIn("<li><code>/inspect/scheduler</code></li>", rendered)
+
+    def test_markdown_list_indent_normalization_skips_fenced_code(self) -> None:
+        rendered = exporter.render_markdownish(
+            "```text\n"
+            "- parent\n"
+            "  - child\n"
+            "```\n"
+        )
+
+        self.assertIn("- parent\n  - child", rendered)
+
     def test_html_renders_mermaid_code_blocks_as_diagrams(self) -> None:
         rendered = exporter.render_markdownish(
             "```mermaid\n"
