@@ -941,11 +941,24 @@ def format_time(value: Any) -> str:
 
 
 def render_markdownish(text: str) -> str:
-    return markdown_lib.markdown(
+    rendered = markdown_lib.markdown(
         text or "",
         extensions=["fenced_code", "tables", "sane_lists", "nl2br"],
         output_format="html5",
     )
+    return render_mermaid_blocks(rendered)
+
+
+def render_mermaid_blocks(rendered: str) -> str:
+    pattern = re.compile(
+        r'<pre><code class="language-mermaid">(.*?)</code></pre>',
+        re.DOTALL,
+    )
+
+    def replace(match: re.Match[str]) -> str:
+        return f'<div class="mermaid" role="img">{match.group(1)}</div>'
+
+    return pattern.sub(replace, rendered)
 
 
 def render_pre(text: str) -> str:
@@ -1290,6 +1303,7 @@ HTML_TEMPLATE = """<!doctype html>
       document.documentElement.dataset.theme = saved || (prefersDark ? "dark" : "light");
     }})();
   </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <style>
     :root {{
       color-scheme: light;
@@ -1683,6 +1697,20 @@ HTML_TEMPLATE = """<!doctype html>
       font-size: 12px;
       line-height: 1.45;
     }}
+    .mermaid {{
+      margin: 16px 0;
+      overflow: auto;
+      background: var(--code-block-bg);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 14px;
+      color: var(--code-block-text);
+      text-align: center;
+    }}
+    .mermaid svg {{
+      max-width: 100%;
+      height: auto;
+    }}
     .diff-code span {{ display: block; min-height: 1.35em; padding: 0 5px; }}
     .diff-code .add {{ background: var(--add); color: var(--add-text); }}
     .diff-code .del {{ background: var(--del); color: var(--del-text); }}
@@ -1871,6 +1899,26 @@ HTML_TEMPLATE = """<!doctype html>
         updateButton();
       }});
       updateButton();
+    }})();
+    (function () {{
+      function renderMermaid() {{
+        var diagrams = document.querySelectorAll(".mermaid");
+        if (!diagrams.length || !window.mermaid) {{
+          return;
+        }}
+        var theme = document.documentElement.dataset.theme === "dark" ? "dark" : "default";
+        window.mermaid.initialize({{
+          startOnLoad: false,
+          securityLevel: "strict",
+          theme: theme
+        }});
+        window.mermaid.run({{ nodes: diagrams }});
+      }}
+      if (document.readyState === "complete") {{
+        renderMermaid();
+      }} else {{
+        window.addEventListener("load", renderMermaid, {{ once: true }});
+      }}
     }})();
     (function () {{
       var button = document.getElementById("outline-toggle");

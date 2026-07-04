@@ -620,6 +620,33 @@ class ExportOpenCodeSessionsTest(unittest.TestCase):
         self.assertIn("<strong>HTML</strong>", rendered)
         self.assertIn("<pre><code class=\"language-python\">", rendered)
 
+    def test_html_renders_mermaid_code_blocks_as_diagrams(self) -> None:
+        rendered = exporter.render_markdownish(
+            "```mermaid\n"
+            "graph TD\n"
+            "  A-->B\n"
+            "```\n"
+        )
+
+        self.assertIn('<div class="mermaid" role="img">', rendered)
+        self.assertIn("graph TD", rendered)
+        self.assertIn("A--&gt;B", rendered)
+        self.assertNotIn('class="language-mermaid"', rendered)
+
+    def test_html_template_loads_mermaid_renderer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            db_path = root / "opencode.db"
+            create_test_db(db_path)
+
+            sessions = exporter.load_sessions(db_path, "ses_test")
+            html = exporter.render_session_html(sessions[0], root)
+
+        self.assertIn("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js", html)
+        self.assertIn(".mermaid {", html)
+        self.assertIn("window.mermaid.initialize", html)
+        self.assertIn("window.mermaid.run", html)
+
     def test_large_diff_uses_plain_pre_to_keep_dom_small(self) -> None:
         rendered = exporter.render_diff(
             "\n".join(f"+line {index}" for index in range(5)),
